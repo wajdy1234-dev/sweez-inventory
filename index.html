@@ -252,7 +252,7 @@ table.plain-table tbody tr:hover { background: var(--color-surface-hover); curso
 <header class="app-header">
   <div class="brand" data-nav="#/">
     <span class="logo-badge">SWEEZ</span>
-    <span>أداة جرد مخزون معمل سويز</span>
+    <span>أداة جرد مخزون نكهات الاحلام</span>
   </div>
   <nav id="main-nav">
     <a href="#/" data-route="#/">الرئيسية</a>
@@ -5814,7 +5814,7 @@ const PrintExport = (() => {
       <div class="print-header">
         <div class="print-brand-row">
           <div class="print-brand">SWEEZ</div>
-          <div class="print-title">تقرير جرد مخزون معمل سويز</div>
+          <div class="print-title">تقرير جرد مخزون نكهات الاحلام</div>
         </div>
         <div class="print-meta">
           <span><span class="label">تاريخ الجرد:</span><span class="value">${esc(inv.inventoryDate)}</span></span>
@@ -6072,7 +6072,7 @@ const Units = (() => {
 const HomePage = (() => {
   async function render(container) {
     container.innerHTML = '';
-    container.appendChild(UI.el('h1', {}, 'أداة جرد مخزون معمل سويز'));
+    container.appendChild(UI.el('h1', {}, 'أداة جرد مخزون نكهات الاحلام'));
     container.appendChild(UI.el('p', { style: 'color:var(--text-muted); margin-top:-6px;' }, 'إدارة سريعة ودقيقة لجرد المخزون وتقييمه'));
 
     const actions = UI.el('div', { class: 'home-actions' }, [
