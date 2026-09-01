@@ -5522,6 +5522,34 @@ const Data = (() => {
       .map((inv) => ({ ...serializeInventoryHeader(inv), summary: computeSummary(inv.lines) }));
   }
 
+  function buildLineForItem(invId, item) {
+    const settings = loadSettings(item.id);
+    let cost = { content_in_smallest: null, unit_cost: null };
+    if (settings) { try { cost = computeItemCost(toSnakeSettings(settings)); } catch (e) { /* غير مكتمل بعد */ } }
+    return {
+      id: db().nextLineId++, inventoryId: invId, itemId: item.id, lineOrder: item.displayOrder, itemName: item.name,
+      baseUnit: settings ? settings.baseUnit : null, smallestUnit: settings ? settings.smallestUnit : null,
+      baseToSmallestFactor: settings ? settings.baseToSmallestFactor : null,
+      purchaseUnit: settings ? settings.purchaseUnit : null, purchaseContentQty: settings ? settings.purchaseContentQty : null,
+      purchaseContentUnit: settings ? settings.purchaseContentUnit : null, contentInSmallest: cost.content_in_smallest,
+      purchasePrice: settings ? settings.purchasePrice : null, unitCost: cost.unit_cost,
+      fullUnitsCount: null, partialQty: null, partialUnit: null, totalQtySmallest: null, inventoryValue: null,
+      isCounted: false, notes: null,
+    };
+  }
+
+  // يضيف تلقائيًا أي صنف نشط جديد (أُضيف بعد بدء هذا الجرد) إلى جرد لا يزال "مسودة"،
+  // دون المساس بالجردات المعتمدة (سجل تاريخي ثابت) أو بالأسطر الموجودة أصلًا.
+  function syncDraftLines(inv) {
+    if (inv.status !== 'draft') return false;
+    const existingItemIds = new Set(inv.lines.map((l) => l.itemId));
+    const newItems = db().items.filter((i) => i.isActive && !existingItemIds.has(i.id));
+    if (!newItems.length) return false;
+    newItems.forEach((item) => { inv.lines.push(buildLineForItem(inv.id, item)); });
+    inv.lines.sort((a, b) => a.lineOrder - b.lineOrder);
+    return true;
+  }
+
   function createInventory(body) {
     const countedBy = String(body.countedBy || '').trim();
     if (!countedBy) throw new Error('اسم القائم بالجرد مطلوب.');
@@ -5532,21 +5560,7 @@ const Data = (() => {
     if (!items.length) throw new Error('لا توجد أصناف نشطة لإنشاء جرد جديد. الرجاء إضافة أصناف أولًا.');
 
     const invId = db().nextInventoryId++;
-    const lines = items.map((item) => {
-      const settings = loadSettings(item.id);
-      let cost = { content_in_smallest: null, unit_cost: null };
-      if (settings) { try { cost = computeItemCost(toSnakeSettings(settings)); } catch (e) { /* غير مكتمل بعد */ } }
-      return {
-        id: db().nextLineId++, inventoryId: invId, itemId: item.id, lineOrder: item.displayOrder, itemName: item.name,
-        baseUnit: settings ? settings.baseUnit : null, smallestUnit: settings ? settings.smallestUnit : null,
-        baseToSmallestFactor: settings ? settings.baseToSmallestFactor : null,
-        purchaseUnit: settings ? settings.purchaseUnit : null, purchaseContentQty: settings ? settings.purchaseContentQty : null,
-        purchaseContentUnit: settings ? settings.purchaseContentUnit : null, contentInSmallest: cost.content_in_smallest,
-        purchasePrice: settings ? settings.purchasePrice : null, unitCost: cost.unit_cost,
-        fullUnitsCount: null, partialQty: null, partialUnit: null, totalQtySmallest: null, inventoryValue: null,
-        isCounted: false, notes: null,
-      };
-    });
+    const lines = items.map((item) => buildLineForItem(invId, item));
 
     const inv = { id: invId, inventoryDate, countedBy, generalNotes, status: 'draft', createdAt: new Date().toISOString(), finalizedAt: null, lines };
     db().inventories.push(inv);
@@ -5556,6 +5570,8 @@ const Data = (() => {
 
   function getInventory(id) {
     const inv = findInventory(id);
+    const changed = syncDraftLines(inv);
+    if (changed) Store.persist();
     return { ...serializeInventoryHeader(inv), summary: computeSummary(inv.lines), lines: inv.lines.map((l) => ({ ...l })) };
   }
 
